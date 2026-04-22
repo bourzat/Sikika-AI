@@ -62,6 +62,7 @@ tab_form, tab_track, tab_analytics, tab_admin, tab_dev = st.tabs([
 ])
 
 # --- TAB 1: CITIZEN REPORTING ---
+# --- TAB 1: CITIZEN REPORTING ---
 with tab_form:
     st.subheader("Submit Official Road Grievance")
     with st.form("grievance_form", clear_on_submit=True):
@@ -82,8 +83,11 @@ with tab_form:
         if submitted:
             if name and number and complaint:
                 with st.spinner('AI Engine processing...'):
+                    # 1. Process with ML and Generate ID
                     complaint_type, priority = analyze_complaint(complaint)
                     ticket_id = f"NRB-{random.randint(100000, 999999)}"
+                    
+                    # 2. Prepare and Save
                     new_ticket = {
                         "Ticket ID": ticket_id, "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
                         "Name": name, "Email": email, "Phone": number, "Sub-county": selected_sub,
@@ -91,8 +95,15 @@ with tab_form:
                         "Category": complaint_type.title(), "AI Priority": priority, "Status": "Open", "Hotspot": "No"
                     }
                     save_ticket(new_ticket)
-                    st.rerun() 
-                st.success(f"✅ Ticket Raised: **{ticket_id}**")
+                    
+                    # 3. CRITICAL: Refresh local data so other tabs see it without a rerun
+                    st.session_state.tickets = load_all_tickets()
+                
+                # 4. Display Result (Now it will actually show!)
+                st.success(f"✅ Grievance Logged! Your Ticket ID is: **{ticket_id}**")
+                st.info("💡 Pro-tip: Copy this ID to track progress in the 'Track My Grievance' tab.")
+            else:
+                st.error("Please fill in all required fields (*) before submitting.")
 
 # --- NEW TAB 2: TRACK MY GRIEVANCE ---
 with tab_track:
@@ -227,8 +238,13 @@ with tab_analytics:
 
 # --- TAB 4: ADMIN DASHBOARD ---
 with tab_admin:
+    st.subheader("🔐 Grievance Management Dashboard")
+    
     if not df.empty:
-        # --- 1. ACTION CENTER (TOP) ---
+        # Create a placeholder at the very top for notifications
+        admin_notif = st.empty()
+
+        # --- 1. ACTION CENTER ---
         st.subheader("📝 Resolution Action Center")
         with st.expander("Update Ticket Status", expanded=True):
             search_resolve = st.text_input("Search Ticket ID to resolve:", key="resolve_search_input")
@@ -249,29 +265,33 @@ with tab_admin:
                     status_options = ["Open", "In Progress", "Resolved"]
                     n_stat = st.selectbox("New Resolution Status", options=status_options, key="new_status_dropdown")
                 with c_u2:
-                    # Capture feedback text to pass to email
                     feedback_text = st.text_area("Resolution Feedback (Internal/External)", key="feedback_textarea")
                 
                 if st.button("Confirm Update", type="primary", use_container_width=True, key="confirm_update_btn"):
-                    # Update the Local Database
+                    import time
+                    from notifications import send_citizen_email
+                    
+                    # Update DB
                     update_ticket_status(t_id, n_stat)
                     
-                    # TRIGGER EMAIL NOTIFICATION (with the captured feedback)
-                    from notifications import send_citizen_email
+                    # Send Email
                     email_sent = send_citizen_email(sel_row['Email'], t_id, n_stat, feedback_text)
                     
                     if email_sent:
-                        st.success(f"✅ Status for {t_id} updated to {n_stat} and citizen notified via email!")
+                        admin_notif.success(f"✅ {t_id} updated to {n_stat}. Citizen notified!")
                     else:
-                        st.warning(f"✅ Status updated to {n_stat}, but email notification failed (Check logs).")
+                        admin_notif.warning(f"✅ {t_id} updated, but email failed.")
                     
+                    # Wait 10 seconds then clear the message and refresh
+                    time.sleep(10)
+                    admin_notif.empty()
                     st.rerun()
             else:
                 st.warning("No records match your search criteria.")
 
         st.divider()
 
-        # --- 2. MASTER ARCHIVE (BOTTOM) ---
+        # --- 2. MASTER ARCHIVE ---
         st.subheader("🗄️ Master Database Archive")
         search = st.text_input("🔍 Filter Master Archive by ID, Name, or Landmark", key="master_archive_search")
         
@@ -285,14 +305,22 @@ with tab_admin:
         
         st.dataframe(admin_df.sort_values(by="Timestamp", ascending=False), use_container_width=True, hide_index=True)
         
-        csv_data = admin_df.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="📥 Export View to CSV",
-            data=csv_data,
-            file_name=f"ministry_export_{datetime.now().strftime('%Y%m%d')}.csv",
-            mime='text/csv',
-            key="csv_export_btn"
-        )
+        # CSV Section
+        st.markdown("---")
+        c_down1, c_down2 = st.columns([1, 2])
+        with c_down1:
+            csv_data = admin_df.to_csv(index=False).encode('utf-8')
+            if st.download_button(
+                label="📥 Export View to CSV",
+                data=csv_data,
+                file_name=f"ministry_export_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime='text/csv',
+                key="csv_export_btn"
+            ):
+                # Note: Streamlit won't show this message UNTIL the next rerun 
+                # because the download button is a browser-level event.
+                st.toast("CSV Download Started!", icon="📥")
+                
     else:
         st.info("System archive is empty.")
 
