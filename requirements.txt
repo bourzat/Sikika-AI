@@ -5,4 +5,10 @@ plotly
 scikit-learn
 torch
 transformers
-sentencepiece
+sentencepieces
+
+
+requests
+fastapi
+uvicorn
+python-dotenv

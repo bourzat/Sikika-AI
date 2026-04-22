@@ -228,12 +228,11 @@ with tab_analytics:
 # --- TAB 4: ADMIN DASHBOARD ---
 with tab_admin:
     if not df.empty:
-        # --- 1. ACTION CENTER (NOW AT THE TOP) ---
+        # --- 1. ACTION CENTER (TOP) ---
         st.subheader("📝 Resolution Action Center")
         with st.expander("Update Ticket Status", expanded=True):
             search_resolve = st.text_input("Search Ticket ID to resolve:", key="resolve_search_input")
             
-            # Now pulls directly from df to keep it independent from the table filter below
             if search_resolve:
                 opts = df[df['Ticket ID'].str.contains(search_resolve, case=False) | df['Name'].str.contains(search_resolve, case=False)]
             else:
@@ -250,21 +249,30 @@ with tab_admin:
                     status_options = ["Open", "In Progress", "Resolved"]
                     n_stat = st.selectbox("New Resolution Status", options=status_options, key="new_status_dropdown")
                 with c_u2:
-                    st.text_area("Resolution Feedback (Internal/External)", key="feedback_textarea")
+                    # Capture feedback text to pass to email
+                    feedback_text = st.text_area("Resolution Feedback (Internal/External)", key="feedback_textarea")
                 
                 if st.button("Confirm Update", type="primary", use_container_width=True, key="confirm_update_btn"):
+                    # Update the Local Database
                     update_ticket_status(t_id, n_stat)
-                    st.success(f"Status for {t_id} updated to {n_stat}!")
+                    
+                    # TRIGGER EMAIL NOTIFICATION (with the captured feedback)
+                    from notifications import send_citizen_email
+                    email_sent = send_citizen_email(sel_row['Email'], t_id, n_stat, feedback_text)
+                    
+                    if email_sent:
+                        st.success(f"✅ Status for {t_id} updated to {n_stat} and citizen notified via email!")
+                    else:
+                        st.warning(f"✅ Status updated to {n_stat}, but email notification failed (Check logs).")
+                    
                     st.rerun()
             else:
                 st.warning("No records match your search criteria.")
 
         st.divider()
 
-        # --- 2. MASTER ARCHIVE (NOW AT THE BOTTOM) ---
+        # --- 2. MASTER ARCHIVE (BOTTOM) ---
         st.subheader("🗄️ Master Database Archive")
-        
-        # 👇 THE FIX: Added key="master_archive_search"
         search = st.text_input("🔍 Filter Master Archive by ID, Name, or Landmark", key="master_archive_search")
         
         admin_df = df.copy()
