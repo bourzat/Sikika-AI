@@ -1,69 +1,85 @@
 import sqlite3
 import random
-import pandas as pd
 from datetime import datetime, timedelta
 from database import init_db, save_ticket
 
-# --- MOCK DATA LIBRARIES ---
-NAMES = ["John Kamau", "Mary Atieno", "David Omondi", "Faith Wanjiku", "Samuel Otieno", "Mercy Chepngetich", "Peter Mutua", "Sarah Nyambura", "James Okoth", "Esther Wairimu"]
-ISSUES = [
-    ("Pothole", "Large pothole near the stage, causing traffic."),
-    ("Street Light", "Street lights are not working, very dark at night."),
-    ("Drainage", "Blocked drainage causing flooding after the rains."),
-    ("Road Marking", "Faded zebra crossing, very dangerous for pedestrians."),
-    ("Illegal Bumps", "Someone put unofficial soil bumps on this road."),
-    ("Bridge Repair", "Small crack on the pedestrian bridge, needs checking.")
+# Realistic Nairobi Geodata from your previous version
+LOCATIONS = [
+    ("Westlands", "Parklands/Highridge", "Aga Khan Hospital"),
+    ("Westlands", "Karura", "Village Market"),
+    ("Langata", "South-C", "South C Mosque"),
+    ("Langata", "Karen", "Karen Crossroads"),
+    ("Kibra", "Makina", "Kibera Law Courts"),
+    ("Kasarani", "Kasarani", "TRM Mall"),
+    ("Starehe", "Nairobi Central", "Kencom"),
+    ("Embakasi East", "Utawala", "Eastern Bypass"),
+    ("Kamukunji", "Eastleigh North", "First Avenue")
 ]
-SUB_COUNTIES = {
-    "Westlands": ["Kitisuru", "Parklands/Highridge", "Karura", "Kangemi", "Mountain View"],
-    "Kasarani": ["Claycity", "Mwiki", "Kasarani", "Njiru", "Ruai"],
-    "Starehe": ["Nairobi Central", "Ngara", "Pangani", "Landimawe", "Nairobi South"],
-    "Langata": ["Karen", "South-C", "Nairobi West", "Mugumo-ini"],
-    "Kibra": ["Makina", "Laini Saba", "Lindi", "Sarangombe"]
-}
-PRIORITIES = ["Critical", "High", "Medium", "Low"]
-STATUSES = ["Open", "In Progress", "Resolved"]
 
-def seed_database(n=2000):
-    print(f"🚀 Initializing Database and Seeding {n} Records...")
-    init_db()
-    
-    for i in range(n):
-        # Generate Random Logic
-        sub = random.choice(list(SUB_COUNTIES.keys()))
-        ward = random.choice(SUB_COUNTIES[sub])
-        cat, base_desc = random.choice(ISSUES)
-        
-        # Randomize the date over the last 30 days
-        days_ago = random.randint(0, 30)
-        timestamp = (datetime.now() - timedelta(days=days_ago)).strftime("%Y-%m-%d %H:%M")
-        
-        ticket = {
-            "Ticket ID": f"NRB-{random.randint(100000, 999999)}",
-            "Timestamp": timestamp,
-            "Name": random.choice(NAMES),
-            "Email": f"user{random.randint(1, 999)}@gmail.com",
-            "Phone": f"07{random.randint(10, 99)}{random.randint(100000, 999999)}",
-            "Sub-county": sub,
-            "Ward": ward,
-            "Landmark": f"Near {random.choice(['Shell', 'Total', 'KCB Bank', 'Police Post', 'Supermarket'])}",
-            "complaint_text": f"{base_desc} Specific spot: {ward} area.",
-            "Category": cat,
-            "AI Priority": random.choice(PRIORITIES),
-            "Status": random.choice(STATUSES),
-            "Hotspot": "No"
-        }
-        
-        save_ticket(ticket)
-        
-        if (i + 1) % 500 == 0:
-            print(f"✅ {i + 1} records injected...")
+# Complaints merged with your new 3-status logic (Open, In Progress, Resolved)
+COMPLAINTS = [
+    ("Massive pothole causing traffic buildup and damaging tires.", "Potholes & Road Surface", "Medium"),
+    ("Someone stole the manhole cover on the pavement, huge hazard.", "Vandalism & Streetlights", "Medium"),
+    ("Traffic lights at the intersection have been dead since morning.", "Traffic Signals & Signs", "Critical"),
+    ("The drainage is completely blocked, road is flooded and impassable.", "Drainage & Flooding", "Critical"),
+    ("Matatus are overlapping heavily on the pedestrian walkway.", "Traffic Violations", "Medium"),
+    ("A stalled lorry has blocked the left lane causing a huge jam.", "Road Obstructions", "Medium"),
+    ("Terrible accident between a bus and a personal car, road completely blocked.", "Accidents & Collisions", "Critical"),
+    ("They built a new speed bump but didn't paint it, cars are flying.", "Unmarked Bumps", "High"),
+    ("Gridlock traffic from town all the way to the bypass.", "Congestion", "Low")
+]
 
-if __name__ == "__main__":
-    # Wipe old DB if you want a fresh start, otherwise it appends
+FIRST_NAMES = ["John", "Mary", "David", "Sarah", "Kevin", "Grace", "Brian", "Fatuma", "Ali", "Dennis"]
+LAST_NAMES = ["Kamau", "Ochieng", "Mutiso", "Hassan", "Njoroge", "Kiprono", "Otieno", "Abdi", "Mwangi"]
+
+def seed_database(num_records=2000):
+    # Ensure DB is wiped for a clean start
     import os
     if os.path.exists("grievances.db"):
         os.remove("grievances.db")
+        print("🗑️ Old database removed.")
+
+    init_db()  
+    print(f"🚀 Injecting {num_records} realistic Nairobi records...")
     
+    for i in range(num_records):
+        # Sequential ID to guarantee no "IntegrityError"
+        ticket_id = f"NRB-{100000 + i}"
+        
+        # Spread timestamps over 30 days
+        random_minutes_ago = random.randint(1, 43200)
+        timestamp = (datetime.now() - timedelta(minutes=random_minutes_ago)).strftime("%Y-%m-%d %H:%M")
+        
+        f_name = random.choice(FIRST_NAMES)
+        l_name = random.choice(LAST_NAMES)
+        
+        sub_county, ward, landmark = random.choice(LOCATIONS)
+        complaint_text, category, priority = random.choice(COMPLAINTS)
+        
+        # New simplified status logic
+        status = random.choice(["Open", "In Progress", "Resolved"])
+        
+        # Mapping to the exact keys required by your database.py save_ticket function
+        ticket_data = {
+            "Ticket ID": ticket_id,
+            "Timestamp": timestamp,
+            "Name": f"{f_name} {l_name}",
+            "Email": f"{f_name.lower()}@gmail.com",
+            "Phone": f"07{random.randint(10000000, 99999999)}",
+            "Sub-county": sub_county,
+            "Ward": ward,
+            "Landmark": landmark,
+            "complaint_text": complaint_text,
+            "Category": category,
+            "AI Priority": priority,
+            "Status": status
+        }
+        
+        save_ticket(ticket_data)
+        
+        if (i + 1) % 500 == 0:
+            print(f"✅ {i + 1} records processed...")
+
+if __name__ == "__main__":
     seed_database(2000)
-    print("✨ Database ready for the Strategic Analytics demo!")
+    print("✨ Seeding Complete. Your Dashboard is now live with 2,000 realistic records!")
