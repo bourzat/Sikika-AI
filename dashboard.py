@@ -53,11 +53,12 @@ if not df.empty:
 
 st.title("🛣️ Sikika AI - Ministry of Roads")
 # 1. UPDATED TABS: Added 'Track My Grievance'
-tab_form, tab_track, tab_analytics, tab_admin = st.tabs([
+tab_form, tab_track, tab_analytics, tab_admin, tab_dev = st.tabs([
     "📝 Citizen Reporting Portal", 
     "🔍 Track My Grievance", 
     "📊 Strategic Analytics", 
-    "🔐 Admin Dashboard"
+    "🔐 Admin Dashboard",
+    "💻 Developer Portal"
 ])
 
 # --- TAB 1: CITIZEN REPORTING ---
@@ -223,13 +224,48 @@ with tab_analytics:
     else:
         st.info("No data available for analysis.")
 
-# --- TAB 3: ADMIN DASHBOARD ---
+
+# --- TAB 4: ADMIN DASHBOARD ---
 with tab_admin:
-    st.subheader("🔐 Grievance Management Dashboard")
-    
     if not df.empty:
-        # 1. SEARCH LOG
-        search = st.text_input("🔍 Filter Master Archive by ID, Name, or Landmark")
+        # --- 1. ACTION CENTER (NOW AT THE TOP) ---
+        st.subheader("📝 Resolution Action Center")
+        with st.expander("Update Ticket Status", expanded=True):
+            search_resolve = st.text_input("Search Ticket ID to resolve:", key="resolve_search_input")
+            
+            # Now pulls directly from df to keep it independent from the table filter below
+            if search_resolve:
+                opts = df[df['Ticket ID'].str.contains(search_resolve, case=False) | df['Name'].str.contains(search_resolve, case=False)]
+            else:
+                opts = df.sort_values(by="Timestamp", ascending=False).head(10)
+
+            if not opts.empty:
+                t_id = st.selectbox("Select Target Ticket ID", options=opts['Ticket ID'].tolist(), key="target_ticket_id")
+                sel_row = df[df['Ticket ID'] == t_id].iloc[0]
+                
+                st.info(f"**Editing Ticket:** {t_id} | **Citizen:** {sel_row['Name']} | **Current Status:** {sel_row['Status']}")
+                
+                c_u1, c_u2 = st.columns(2)
+                with c_u1:
+                    status_options = ["Open", "In Progress", "Resolved"]
+                    n_stat = st.selectbox("New Resolution Status", options=status_options, key="new_status_dropdown")
+                with c_u2:
+                    st.text_area("Resolution Feedback (Internal/External)", key="feedback_textarea")
+                
+                if st.button("Confirm Update", type="primary", use_container_width=True, key="confirm_update_btn"):
+                    update_ticket_status(t_id, n_stat)
+                    st.success(f"Status for {t_id} updated to {n_stat}!")
+                    st.rerun()
+            else:
+                st.warning("No records match your search criteria.")
+
+        st.divider()
+
+        # --- 2. MASTER ARCHIVE (NOW AT THE BOTTOM) ---
+        st.subheader("🗄️ Master Database Archive")
+        
+        # 👇 THE FIX: Added key="master_archive_search"
+        search = st.text_input("🔍 Filter Master Archive by ID, Name, or Landmark", key="master_archive_search")
         
         admin_df = df.copy()
         if search:
@@ -239,49 +275,85 @@ with tab_admin:
                 admin_df['Landmark'].str.contains(search, case=False, na=False)
             ]
         
-        # 2. MASTER TABLE
         st.dataframe(admin_df.sort_values(by="Timestamp", ascending=False), use_container_width=True, hide_index=True)
         
-        # 📥 CSV DOWNLOAD (REPOSITIONED BELOW TABLE)
         csv_data = admin_df.to_csv(index=False).encode('utf-8')
         st.download_button(
             label="📥 Export View to CSV",
             data=csv_data,
             file_name=f"ministry_export_{datetime.now().strftime('%Y%m%d')}.csv",
-            mime='text/csv'
+            mime='text/csv',
+            key="csv_export_btn"
         )
-
-        st.divider()
-
-        # 3. ACTION CENTER: STATUS UPDATES
-        st.subheader("📝 Resolution Action Center")
-        with st.expander("Update Ticket Status", expanded=True):
-            search_resolve = st.text_input("Search Ticket ID to resolve:", key="resolve_search")
-            
-            if search_resolve:
-                opts = admin_df[admin_df['Ticket ID'].str.contains(search_resolve, case=False) | admin_df['Name'].str.contains(search_resolve, case=False)]
-            else:
-                opts = admin_df.sort_values(by="Timestamp", ascending=False).head(10)
-
-            if not opts.empty:
-                t_id = st.selectbox("Select Target Ticket ID", options=opts['Ticket ID'].tolist())
-                sel_row = df[df['Ticket ID'] == t_id].iloc[0]
-                
-                st.info(f"**Editing Ticket:** {t_id} | **Citizen:** {sel_row['Name']} | **Current Status:** {sel_row['Status']}")
-                
-                c_u1, c_u2 = st.columns(2)
-                with c_u1:
-                    # RESTRICTED STATUS OPTIONS
-                    status_options = ["Open", "In Progress", "Resolved"]
-                    n_stat = st.selectbox("New Resolution Status", options=status_options)
-                with c_u2:
-                    st.text_area("Resolution Feedback (Internal/External)")
-                
-                if st.button("Confirm Update", type="primary", use_container_width=True):
-                    update_ticket_status(t_id, n_stat)
-                    st.success(f"Status for {t_id} updated to {n_stat}!")
-                    st.rerun()
-            else:
-                st.warning("No records match your search criteria.")
     else:
         st.info("System archive is empty.")
+
+# --- TAB 5: DEVELOPER PORTAL (NEW!) ---
+with tab_dev:
+    st.subheader("💳 Enterprise API Access")
+    st.markdown("Purchase a live API key via M-Pesa to stream Sikika Risk Intelligence directly to your logistics platforms.")
+    
+    dev_c1, dev_c2, dev_c3 = st.columns(3)
+    with dev_c1:
+        company_name = st.text_input("Company Name", placeholder="e.g., Sendy Logistics")
+    with dev_c2:
+        billing_phone = st.text_input("M-Pesa Billing Phone", placeholder="07XXXXXXXX")
+    with dev_c3:
+        tier = st.selectbox("API Subscription Tier", ["Basic (1 KES/mo)", "Pro (2 KES/mo)", "Enterprise (5 KES/mo)"])
+        
+    if st.button("Generate Invoice & Pay via M-Pesa", type="primary"):
+        if company_name and billing_phone:
+            from mpesa import trigger_stk
+            import uuid
+            import time
+            
+            amount = int(tier.split("(")[1].split(" ")[0])
+            
+            with st.spinner("Connecting to Safaricom Daraja API..."):
+                response = trigger_stk(billing_phone, amount)
+                
+                if response and response.get("ResponseCode") == "0":
+                    st.success(f"✅ STK Push successfully triggered on {billing_phone}.")
+                    
+                    # --- THE HACKATHON DELAY (Simulates webhook callback) ---
+                    with st.spinner("⏳ Awaiting M-Pesa payment confirmation... (Please enter your PIN)"):
+                        time.sleep(8) # Gives you 8 seconds to type your PIN during the live pitch!
+                    
+                    # Generate Fake Live Key 
+                    fake_api_key = f"sk_live_{uuid.uuid4().hex[:24]}"
+                    st.balloons()
+                    st.success("**✅ Payment Verified! Your Developer Account is now active.**")
+                    st.info(f"**Your Live API Key:** `{fake_api_key}`")
+                    
+                    # --- NEW: INSTANT DOCUMENTATION WITH EXPLANATIONS ---
+                    st.divider()
+                    st.markdown("### 📚 API Quick Start Guide")
+                    st.markdown("Inject your new API key into the headers to authenticate your requests.")
+                    
+                    st.markdown("#### 1. Fetch Risk Intelligence (Monetization Layer)")
+                    st.markdown("> **What it does:** Returns aggregated risk scores, resolution rates, and regional hazard indexes.\n> **Use Case:** Logistics companies (e.g., Glovo, Sendy) use this to route drivers away from suspension-killing potholes, or insurance firms use it for risk modeling.")
+                    st.code(f"""
+import requests
+
+url = "http://127.0.0.1:8000/v1/analytics/risk-intelligence"
+headers = {{"Authorization": "Bearer {fake_api_key}"}}
+
+response = requests.get(url, headers=headers)
+print(response.json())
+                    """, language="python")
+                    
+                    st.markdown("#### 2. Fetch Master Grievance Feed (Integration Layer)")
+                    st.markdown("> **What it does:** Pulls the raw, real-time database of reported road issues, filterable by location and status.\n> **Use Case:** Government portals like eCitizen, or local ward administrators pulling exact ticket data into their own internal dashboards.")
+                    st.code(f"""
+curl -X 'GET' \\
+  'http://127.0.0.1:8000/v1/grievances?status=Open' \\
+  -H 'accept: application/json' \\
+  -H 'Authorization: Bearer {fake_api_key}'
+                    """, language="bash")
+                    
+                    st.caption("🔗 Want to test it live in your browser? Open the interactive Swagger UI at `http://127.0.0.1:8000/docs`")
+                    
+                else:
+                    st.error(f"❌ Transaction Failed: {response.get('errorMessage', 'Check Daraja Credentials')}")
+        else:
+            st.warning("Please enter a valid Company Name and M-Pesa Phone Number.")
