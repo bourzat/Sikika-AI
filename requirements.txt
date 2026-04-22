@@ -3,11 +3,9 @@ pandas
 numpy
 plotly
 scikit-learn
-torch
+torch --index-url https://download.pytorch.org/whl/cpu
 transformers
-sentencepieces
-
-
+sentencepiece
 requests
 fastapi
 uvicorn
