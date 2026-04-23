@@ -127,34 +127,50 @@ with tab_form:
 # --- TAB 2: TRACK MY GRIEVANCE ---
 with tab_track:
     st.subheader("🔍 Track Your Grievance Status")
-    search_id = st.text_input("Enter your Ticket ID (e.g., NRB-123456):")
+    
+    # Ensure we are looking at the latest data from the session state
+    # This prevents the "ID not found" error right after submitting
+    tracking_df = st.session_state.get('tickets', load_all_tickets())
+    
+    search_id = st.text_input("Enter your Ticket ID (e.g., NRB-123456):", key="tracking_input_field")
     
     if search_id:
-        # Filter the dataframe
-        result = df[df['Ticket ID'] == search_id.strip()]
+        # Clean the input
+        clean_id = search_id.strip()
+        result = tracking_df[tracking_df['Ticket ID'] == clean_id]
         
         if not result.empty:
             ticket = result.iloc[0]
             
-            # 👇 THE CRITICAL LINE: This defines res_col2!
-            res_col1, res_col2 = st.columns(2) 
-            
-            with res_col1:
-                st.metric("Current Status", ticket['Status'])
-                st.write(f"**Category:** {ticket['Category']}")
-                st.write(f"**Logged on:** {ticket['Timestamp']}")
+            # Use the container + border to match your Tab 1 UI
+            with st.container(border=True):
+                st.markdown(f"### Ticket Details: {clean_id}")
                 
-            with res_col2: # This will work now!
-                st.write(f"**Sub-county:** {ticket['Sub-county']}")
-                st.write(f"**Ward:** {ticket['Ward']}")
-                st.write(f"**Landmark:** {ticket['Landmark']}")
+                # --- THIS DEFINITION MUST BE INSIDE THE 'IF' BLOCK ---
+                res_col1, res_col2 = st.columns(2) 
                 
-            st.divider()
-            st.markdown(f"**Official Complaint:**\n> {ticket['complaint_text']}")
+                with res_col1:
+                    # Metric shows the status in big bold letters
+                    st.metric("Current Status", ticket['Status'])
+                    st.write(f"**Category:** {ticket['Category']}")
+                    st.write(f"**Logged on:** {ticket['Timestamp']}")
+                    
+                with res_col2:
+                    st.write(f"**Sub-county:** {ticket['Sub-county']}")
+                    st.write(f"**Ward:** {ticket['Ward']}")
+                    st.write(f"**Landmark:** {ticket['Landmark']}")
+                    
+                st.divider()
+                st.markdown(f"**Citizen Complaint:**\n> {ticket['complaint_text']}")
+                
+                # DEMO PRO-TIP: Show the resolution feedback if the admin has updated it
+                # We'll check if the 'Feedback' column exists in your dataframe
+                if 'Feedback' in ticket and pd.notna(ticket['Feedback']) and ticket['Feedback'] != "":
+                    st.info(f"**Ministry Feedback:**\n\n{ticket['Feedback']}")
         else:
             st.error("Ticket ID not found. Please double-check the ID or raise a new grievance.")
             
-# --- TAB 2: STRATEGIC ANALYTICS ---
+# --- TAB 3: STRATEGIC ANALYTICS ---
 with tab_analytics:
     if not df.empty:
         st.markdown("#### 🔍 Filter Operational Intelligence")
