@@ -7,9 +7,13 @@ from datetime import datetime
 from database import init_db, save_ticket, load_all_tickets, update_ticket_status
 from ml_engine import analyze_complaint
 
-# Initialize System
-init_db()
+# 👇 RUN THIS ONCE AT THE TOP
+init_db() 
 
+# Then load your data into the session state or a dataframe
+if 'tickets' not in st.session_state:
+    st.session_state.tickets = load_all_tickets()
+    
 # ==========================================
 # 🌍 NAIROBI GEODATA
 # ==========================================
