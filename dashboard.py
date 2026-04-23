@@ -62,46 +62,66 @@ tab_form, tab_track, tab_analytics, tab_admin, tab_dev = st.tabs([
 ])
 
 # --- TAB 1: CITIZEN REPORTING ---
-# --- TAB 1: CITIZEN REPORTING ---
 with tab_form:
     st.subheader("Submit Official Road Grievance")
+    
+    # --- STEP 1: DYNAMIC SELECTION (Outside the form to allow reruns) ---
+    st.markdown("##### 📍 Location Details")
+    loc_c1, loc_c2 = st.columns(2)
+    
+    with loc_c1:
+        selected_sub = st.selectbox("Sub-county*", options=sub_counties_list)
+        
+    with loc_c2:
+        # This list now recalculates immediately when Sub-county changes!
+        wards_list = [
+            w.title() for sc in NAIROBI_DATA[0]["sub_counties"] 
+            if sc["subcounty_name"].title() == selected_sub 
+            for w in sc["wards"]
+        ]
+        selected_ward = st.selectbox("Ward*", options=wards_list)
+
+    # --- STEP 2: THE DATA FORM (For the rest of the info) ---
     with st.form("grievance_form", clear_on_submit=True):
+        st.markdown("##### 👤 Reporter & Issue Details")
         col1, col2 = st.columns(2)
         with col1:
             name = st.text_input("Full Name*")
             email = st.text_input("Email Address") 
-            number = st.text_input("Phone Number*")
         with col2:
-            selected_sub = st.selectbox("Sub-county*", options=sub_counties_list)
-            wards_list = [w.title() for sc in NAIROBI_DATA[0]["sub_counties"] if sc["subcounty_name"].title() == selected_sub for w in sc["wards"]]
-            selected_ward = st.selectbox("Ward*", options=wards_list)
-            landmark = st.text_input("Nearest Landmark")
+            number = st.text_input("Phone Number*")
+            landmark = st.text_input("Nearest Landmark (e.g., Near USIU Gate B)")
         
         complaint = st.text_area("Describe the Infrastructure Issue*")
-        submitted = st.form_submit_button("Submit Grievance")
+        submitted = st.form_submit_button("Submit Grievance", type="primary", use_container_width=True)
         
         if submitted:
             if name and number and complaint:
                 with st.spinner('AI Engine processing...'):
-                    # 1. Process with ML and Generate ID
                     complaint_type, priority = analyze_complaint(complaint)
                     ticket_id = f"NRB-{random.randint(100000, 999999)}"
                     
-                    # 2. Prepare and Save
+                    # We can still access selected_sub and selected_ward from above!
                     new_ticket = {
-                        "Ticket ID": ticket_id, "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
-                        "Name": name, "Email": email, "Phone": number, "Sub-county": selected_sub,
-                        "Ward": selected_ward, "Landmark": landmark, "complaint_text": complaint,
-                        "Category": complaint_type.title(), "AI Priority": priority, "Status": "Open", "Hotspot": "No"
+                        "Ticket ID": ticket_id, 
+                        "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                        "Name": name, 
+                        "Email": email, 
+                        "Phone": number, 
+                        "Sub-county": selected_sub,
+                        "Ward": selected_ward, 
+                        "Landmark": landmark, 
+                        "complaint_text": complaint,
+                        "Category": complaint_type.title(), 
+                        "AI Priority": priority, 
+                        "Status": "Open", 
+                        "Hotspot": "No"
                     }
                     save_ticket(new_ticket)
-                    
-                    # 3. CRITICAL: Refresh local data so other tabs see it without a rerun
                     st.session_state.tickets = load_all_tickets()
                 
-                # 4. Display Result (Now it will actually show!)
-                st.success(f"✅ Grievance Logged! Your Ticket ID is: **{ticket_id}**")
-                st.info("💡 Pro-tip: Copy this ID to track progress in the 'Track My Grievance' tab.")
+                st.success(f"✅ Grievance Logged! Ticket ID: **{ticket_id}**")
+                st.balloons()
             else:
                 st.error("Please fill in all required fields (*) before submitting.")
 
