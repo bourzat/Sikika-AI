@@ -118,7 +118,6 @@ with tab_form:
                     st.session_state.tickets = load_all_tickets()
                 
                 st.success(f"✅ Grievance Logged! Ticket ID: **{ticket_id}**")
-                st.balloons()
             else:
                 st.error("Please fill in all required fields (*) before submitting.")
 
