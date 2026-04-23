@@ -74,15 +74,6 @@ tab_form, tab_track, tab_analytics, tab_admin, tab_dev = st.tabs([
     "💻 Developer Portal"
 ])
 
-st.title("🛣️ Sikika AI - Ministry of Roads")
-# 1. UPDATED TABS: Added 'Track My Grievance'
-tab_form, tab_track, tab_analytics, tab_admin, tab_dev = st.tabs([
-    "📝 Citizen Reporting Portal", 
-    "🔍 Track My Grievance", 
-    "📊 Strategic Analytics", 
-    "🔐 Admin Dashboard",
-    "💻 Developer Portal"
-])
 
 # --- TAB 1: CITIZEN REPORTING ---
 with tab_form:
