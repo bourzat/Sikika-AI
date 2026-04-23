@@ -64,60 +64,57 @@ tab_form, tab_track, tab_analytics, tab_admin, tab_dev = st.tabs([
 # --- TAB 1: CITIZEN REPORTING ---
 with tab_form:
     st.subheader("Submit Official Road Grievance")
-    
-    # --- STEP 1: DYNAMIC SELECTION (Outside the form to allow reruns) ---
-    st.markdown("##### 📍 Location Details")
-    loc_c1, loc_c2 = st.columns(2)
-    
-    with loc_c1:
-        selected_sub = st.selectbox("Sub-county*", options=sub_counties_list)
-        
-    with loc_c2:
-        # This list now recalculates immediately when Sub-county changes!
-        wards_list = [
-            w.title() for sc in NAIROBI_DATA[0]["sub_counties"] 
-            if sc["subcounty_name"].title() == selected_sub 
-            for w in sc["wards"]
-        ]
-        selected_ward = st.selectbox("Ward*", options=wards_list)
 
-    # --- STEP 2: THE DATA FORM (For the rest of the info) ---
-    with st.form("grievance_form", clear_on_submit=True):
-        st.markdown("##### 👤 Reporter & Issue Details")
-        col1, col2 = st.columns(2)
-        with col1:
-            name = st.text_input("Full Name*")
-            email = st.text_input("Email Address") 
-        with col2:
-            number = st.text_input("Phone Number*")
-            landmark = st.text_input("Nearest Landmark (e.g., Near USIU Gate B)")
+    # This creates the single "box" container you see in your UI
+    with st.container(border=True):
+        st.markdown("##### 📋 Grievance Details")
         
-        complaint = st.text_area("Describe the Infrastructure Issue*")
-        submitted = st.form_submit_button("Submit Grievance", type="primary", use_container_width=True)
+        # Split into two main vertical columns
+        col_left, col_right = st.columns(2)
         
-        if submitted:
+        with col_left:
+            # Column 1: Personal Info
+            name = st.text_input("Full Name*", placeholder="e.g., John Doe")
+            email = st.text_input("Email Address", placeholder="e.g., john@example.com")
+            number = st.text_input("Phone Number*", placeholder="e.g., 0712345678")
+            
+        with col_right:
+            # Column 2: Location Info (Reactive!)
+            selected_sub = st.selectbox("Sub-county*", options=sub_counties_list)
+            
+            # Logic for dynamic Ward list
+            wards_list = [
+                w.title() for sc in NAIROBI_DATA[0]["sub_counties"] 
+                if sc["subcounty_name"].title() == selected_sub 
+                for w in sc["wards"]
+            ]
+            selected_ward = st.selectbox("Ward*", options=wards_list)
+            landmark = st.text_input("Nearest Landmark", placeholder="e.g., Opposite Shell Station")
+
+        # Bottom section: The text area spans the full width
+        complaint = st.text_area("Describe the Infrastructure Issue*", height=150)
+        
+        # Use a regular button instead of a form_submit_button to allow reactivity
+        if st.button("Submit Grievance", type="primary", use_container_width=True):
             if name and number and complaint:
                 with st.spinner('AI Engine processing...'):
+                    # ML Engine Logic
                     complaint_type, priority = analyze_complaint(complaint)
                     ticket_id = f"NRB-{random.randint(100000, 999999)}"
                     
-                    # We can still access selected_sub and selected_ward from above!
+                    # Save to DB
                     new_ticket = {
                         "Ticket ID": ticket_id, 
                         "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
-                        "Name": name, 
-                        "Email": email, 
-                        "Phone": number, 
-                        "Sub-county": selected_sub,
-                        "Ward": selected_ward, 
-                        "Landmark": landmark, 
-                        "complaint_text": complaint,
-                        "Category": complaint_type.title(), 
-                        "AI Priority": priority, 
-                        "Status": "Open", 
-                        "Hotspot": "No"
+                        "Name": name, "Email": email, "Phone": number, 
+                        "Sub-county": selected_sub, "Ward": selected_ward, 
+                        "Landmark": landmark, "complaint_text": complaint,
+                        "Category": complaint_type.title(), "AI Priority": priority, 
+                        "Status": "Open", "Hotspot": "No"
                     }
                     save_ticket(new_ticket)
+                    
+                    # Force refresh of session data
                     st.session_state.tickets = load_all_tickets()
                 
                 st.success(f"✅ Grievance Logged! Ticket ID: **{ticket_id}**")
