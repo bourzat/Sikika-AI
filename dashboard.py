@@ -67,7 +67,7 @@ tab_form, tab_track, tab_analytics, tab_admin, tab_dev = st.tabs([
 ])
 
 
-# --- TAB 1: CITIZEN REPORTING ---
+ # --- TAB 1: CITIZEN REPORTING ---
 with tab_form:
     st.subheader("Submit Official Road Grievance")
 
@@ -108,7 +108,7 @@ with tab_form:
                     complaint_type, priority = analyze_complaint(complaint)
                     ticket_id = f"NRB-{random.randint(100000, 999999)}"
                     
-                    # Save to DB
+                    # Prepare the ticket dictionary
                     new_ticket = {
                         "Ticket ID": ticket_id, 
                         "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
@@ -118,19 +118,27 @@ with tab_form:
                         "Category": complaint_type.title(), "AI Priority": priority, 
                         "Status": "Open", "Hotspot": "No"
                     }
+
+                    # 1. Save to Database
                     save_ticket(new_ticket)
                     
-                    # Force refresh of session data
+                    # 2. TRIGGER THE CONFIRMATION EMAIL (Imported from notifications.py)
+                    from notifications import send_submission_confirmation
+                    email_sent = send_submission_confirmation(new_ticket)
+                    
+                    # 3. Force refresh of session data
                     st.session_state.tickets = load_all_tickets()
                 
+                # Success Sequence
                 st.success(f"✅ Grievance Logged! Ticket ID: **{ticket_id}**")
-
-                # THE PRO-TIP BOX
+                
+                if email_sent:
+                    st.info(f"📧 **Confirmation Sent:** A receipt of your submission has been sent to **{email}**.")
+                
                 st.info(f"💡 **Pro-Tip:** Copy and save your Ticket ID to track progress in the 'Track My Grievance' tab.")
+                st.balloons()
             else:
                 st.error("Please fill in all required fields (*) before submitting.")
-
-# --- TAB 2: TRACK MY GRIEVANCE ---
 # --- TAB 2: TRACK MY GRIEVANCE ---
 with tab_track:
     st.subheader("🔍 Track Your Grievance Status")
