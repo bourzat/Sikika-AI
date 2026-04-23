@@ -47,31 +47,30 @@ def save_ticket(ticket_data):
     conn.commit()
     conn.close()
 
-def load_all_tickets():
-    """Fetches all tickets and renames 'feedback' for the UI."""
-    conn = sqlite3.connect(DB_NAME)
-    try:
-        df = pd.read_sql_query("SELECT * FROM tickets", conn)
-        df.rename(columns={
-            "ticket_id": "Ticket ID", 
-            "timestamp": "Timestamp", 
-            "name": "Name",
-            "email": "Email", 
-            "phone": "Phone", 
-            "sub_county": "Sub-county",
-            "ward": "Ward", 
-            "landmark": "Landmark", 
-            "category": "Category", 
-            "ai_priority": "AI Priority", 
-            "status": "Status",
-            "feedback": "Feedback" # Rename for consistency in Tab 2/Tab 4
-        }, inplace=True)
-        tickets_list = df.to_dict(orient="records")
-    except Exception:
-        tickets_list = []
+def seed_data():
+    """Adds a sample ticket so the dashboard isn't empty during the demo."""
+    # Check if we already have tickets
+    tickets = load_all_tickets()
     
-    conn.close()
-    return tickets_list
+    if len(tickets) == 0:
+        # Create a sample dictionary that matches what save_ticket expects
+        sample_ticket = {
+            "Ticket ID": "NRB-101010",
+            "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "Name": "Ilyas Bourzat",
+            "Email": "bourzatilyas@gmail.com",
+            "Phone": "0712345678",
+            "Sub-county": "Westlands",
+            "Ward": "Parklands/Highridge",
+            "Landmark": "USIU-Africa Main Gate",
+            "complaint_text": "Severe potholes making the road impassable near the university entrance.",
+            "Category": "Potholes",
+            "AI Priority": "High",
+            "Status": "Open",
+            "Feedback": ""
+        }
+        # Save it to the DB
+        save_ticket(sample_ticket)
 
 def update_ticket_status(tid, new_status, feedback=""):
     """Updates both status and feedback note."""
