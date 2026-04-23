@@ -4,32 +4,24 @@ import plotly.express as px
 import numpy as np
 import random
 from datetime import datetime
-from database import init_db, save_ticket, load_all_tickets, update_ticket_status, seed_data
+from database import init_db, save_ticket, load_all_tickets, update_ticket_status
 from ml_engine import analyze_complaint
 
 # ==========================================
-# 🖥️ 1. GLOBAL SETTINGS (MUST BE FIRST)
+# 🖥️ GLOBAL SETTINGS (MUST BE FIRST)
 # ==========================================
 st.set_page_config(page_title="Sikika AI | Nairobi", layout="wide")
 
 # ==========================================
-# 💾 2. DATABASE & DATA INITIALIZATION
+# 💾 DATA INITIALIZATION
 # ==========================================
-# Initialize the DB schema
-init_db()
+init_db() # Ensures the table exists, even if empty
 
-# Run the seed to ensure the demo has data even if the DB was just wiped
-seed_data()
-
-# Fetch latest tickets from DB
-if 'tickets' not in st.session_state or st.sidebar.button("🔄 Refresh Data"):
-    st.session_state.tickets = load_all_tickets()
-
-# Create the working DataFrame
+# Fetch fresh data from DB on every run/refresh
+st.session_state.tickets = load_all_tickets()
 df = pd.DataFrame(st.session_state.tickets)
 
 if not df.empty:
-    # Handle timestamp conversion for Analytics
     df['Timestamp'] = pd.to_datetime(df['Timestamp'])
 
 # ==========================================
