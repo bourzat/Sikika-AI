@@ -124,79 +124,36 @@ with tab_form:
             else:
                 st.error("Please fill in all required fields (*) before submitting.")
 
-# --- NEW TAB 2: TRACK MY GRIEVANCE ---
+# --- TAB 2: TRACK MY GRIEVANCE ---
 with tab_track:
-    st.subheader("🔍 Real-Time Status Tracking")
-    st.markdown("Enter your unique Ticket ID to see the official progress of your report.")
+    st.subheader("🔍 Track Your Grievance Status")
+    search_id = st.text_input("Enter your Ticket ID (e.g., NRB-123456):")
     
-    # 1. SEARCH INTERFACE
-    track_col1, track_col2 = st.columns([2, 1])
-    
-    with track_col1:
-        search_id = st.text_input("Ticket ID", placeholder="e.g., NRB-123456", label_visibility="collapsed")
-    
-    with track_col2:
-        # THE NEW TRACK BUTTON
-        track_btn = st.button("Track Ticket", type="primary", use_container_width=True)
-    
-    # 2. TRIGGER SEARCH LOGIC
-    if track_btn:
-        if search_id:
-            # Search logic (Case-insensitive)
-            result = df[df['Ticket ID'].str.upper() == search_id.strip().upper()]
+    if search_id:
+        # Filter the dataframe
+        result = df[df['Ticket ID'] == search_id.strip()]
+        
+        if not result.empty:
+            ticket = result.iloc[0]
             
-            if not result.empty:
-                ticket = result.iloc[0]
-                status = ticket['Status']
+            # 👇 THE CRITICAL LINE: This defines res_col2!
+            res_col1, res_col2 = st.columns(2) 
+            
+            with res_col1:
+                st.metric("Current Status", ticket['Status'])
+                st.write(f"**Category:** {ticket['Category']}")
+                st.write(f"**Logged on:** {ticket['Timestamp']}")
                 
-                st.divider()
-                
-                # --- TICKET STATUS CARD ---
-                res_col1, res_col2 = st.columns([1, 2])
-                
-                with res_col1:
-                    # Visual status indicator based on DB
-                    if "Open" in status:
-                        st.warning(f"Current State: {status}")
-                    elif "In Progress" in status:
-                        st.info(f"Current State: {status}")
-                    else:
-                        st.success(f"Current State: {status}")
-                    
-                    st.metric("AI Assigned Priority", ticket['AI Priority'])
-                
-            with res_col2:
-                st.markdown(f"### Ticket Details")
-                st.write(f"**Reporter:** {ticket['Name']}")
-                st.write(f"**Issue Category:** {ticket['Category']}")
-                st.write(f"**Location:** {ticket['Ward']}, {ticket['Sub-county']}")
-                st.write(f"**Logged On:** {ticket['Timestamp'].strftime('%d %b %Y, %H:%M')}")
+            with res_col2: # This will work now!
+                st.write(f"**Sub-county:** {ticket['Sub-county']}")
+                st.write(f"**Ward:** {ticket['Ward']}")
+                st.write(f"**Landmark:** {ticket['Landmark']}")
                 
             st.divider()
-
-            # --- PROGRESS TIMELINE (Logic-driven from DB) ---
-            st.markdown("##### 🛤️ Infrastructure Resolution Timeline")
-            
-            # Step 1: Always completed if ticket exists
-            st.write("✅ **Grievance Received:** The Sikika AI Engine has successfully logged and prioritized this issue.")
-            
-            # Step 2: Completed if "In Progress" or "Resolved"
-            if status in ["In Progress", "Resolved"]:
-                st.write("✅ **Technical Dispatch:** A regional maintenance team has been assigned to the landmark.")
-            else:
-                st.write("⬜ **Technical Dispatch:** Awaiting team assignment based on priority queue.")
-                
-            # Step 3: Completed only if "Resolved"
-            if status == "Resolved":
-                st.write("✅ **Final Resolution:** Work completed. The infrastructure issue has been addressed and verified.")
-            else:
-                st.write("⬜ **Final Resolution:** Verification and closure pending.")
-
+            st.markdown(f"**Official Complaint:**\n> {ticket['complaint_text']}")
         else:
-            st.error("Ticket ID not found. Please ensure the ID matches the one provided at submission.")
-    elif not track_btn and search_id:
-        st.info("Click 'Track Ticket' to retrieve the latest status.")
-
+            st.error("Ticket ID not found. Please double-check the ID or raise a new grievance.")
+            
 # --- TAB 2: STRATEGIC ANALYTICS ---
 with tab_analytics:
     if not df.empty:
