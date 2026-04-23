@@ -265,27 +265,30 @@ with tab_admin:
                 with c_u2:
                     feedback_text = st.text_area("Resolution Feedback (Internal/External)", key="feedback_textarea")
                 
+# --- THE CORRECTED BUTTON BLOCK ---
                 if st.button("Confirm Update", type="primary", use_container_width=True, key="confirm_update_btn"):
                     import time
                     from notifications import send_citizen_email
                     
-                    # Update DB
-                    update_ticket_status(t_id, n_stat)
+                    # 1. Capture the email specifically from the current selection
+                    # This ensures it's the real citizen email, not yours!
+                    target_email = str(sel_row['Email']).strip()
                     
-                    # Send Email
-                    email_sent = send_citizen_email(sel_row['Email'], t_id, n_stat, feedback_text)
+                    # 2. Update DB - Passing feedback_text so it's saved forever
+                    update_ticket_status(t_id, n_stat, feedback_text)
                     
+                    # 3. Send Email notification
+                    email_sent = send_citizen_email(target_email, t_id, n_stat, feedback_text)
+                    
+                    # 4. Show success message in the placeholder
                     if email_sent:
-                        admin_notif.success(f"✅ {t_id} updated to {n_stat}. Citizen notified!")
+                        admin_notif.success(f"✅ Status updated and notification sent to: {target_email}")
                     else:
-                        admin_notif.warning(f"✅ {t_id} updated, but email failed.")
+                        admin_notif.warning(f"✅ Status updated, but email to {target_email} failed.")
                     
-                    # Wait 10 seconds then clear the message and refresh
-                    time.sleep(10)
-                    admin_notif.empty()
+                    # 5. Short pause to let them read the success, then refresh
+                    time.sleep(2) 
                     st.rerun()
-            else:
-                st.warning("No records match your search criteria.")
 
         st.divider()
 
