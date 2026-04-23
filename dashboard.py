@@ -118,6 +118,9 @@ with tab_form:
                     st.session_state.tickets = load_all_tickets()
                 
                 st.success(f"✅ Grievance Logged! Ticket ID: **{ticket_id}**")
+
+                # THE PRO-TIP BOX
+                st.info(f"💡 **Pro-Tip:** Copy and save your Ticket ID to track progress in the 'Track My Grievance' tab.")
             else:
                 st.error("Please fill in all required fields (*) before submitting.")
 
