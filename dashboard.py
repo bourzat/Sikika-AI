@@ -257,7 +257,6 @@ with tab_analytics:
 
 # --- TAB 4: ADMIN DASHBOARD ---
 with tab_admin:
-    st.subheader("🔐 Grievance Management Dashboard")
     
     if not df.empty:
         # Create a placeholder at the very top for notifications
