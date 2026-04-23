@@ -136,7 +136,6 @@ with tab_form:
                     st.info(f"📧 **Confirmation Sent:** A receipt of your submission has been sent to **{email}**.")
                 
                 st.info(f"💡 **Pro-Tip:** Copy and save your Ticket ID to track progress in the 'Track My Grievance' tab.")
-                st.balloons()
             else:
                 st.error("Please fill in all required fields (*) before submitting.")
 # --- TAB 2: TRACK MY GRIEVANCE ---
