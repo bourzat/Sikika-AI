@@ -4,18 +4,36 @@ import plotly.express as px
 import numpy as np
 import random
 from datetime import datetime
-from database import init_db, save_ticket, load_all_tickets, update_ticket_status
+from database import init_db, save_ticket, load_all_tickets, update_ticket_status, seed_data
 from ml_engine import analyze_complaint
 
-# 👇 RUN THIS ONCE AT THE TOP
-init_db() 
-
-# Then load your data into the session state or a dataframe
-if 'tickets' not in st.session_state:
-    st.session_state.tickets = load_all_tickets()
-    
 # ==========================================
-# 🌍 NAIROBI GEODATA
+# 🖥️ 1. GLOBAL SETTINGS (MUST BE FIRST)
+# ==========================================
+st.set_page_config(page_title="Sikika AI | Nairobi", layout="wide")
+
+# ==========================================
+# 💾 2. DATABASE & DATA INITIALIZATION
+# ==========================================
+# Initialize the DB schema
+init_db()
+
+# Run the seed to ensure the demo has data even if the DB was just wiped
+seed_data()
+
+# Fetch latest tickets from DB
+if 'tickets' not in st.session_state or st.sidebar.button("🔄 Refresh Data"):
+    st.session_state.tickets = load_all_tickets()
+
+# Create the working DataFrame
+df = pd.DataFrame(st.session_state.tickets)
+
+if not df.empty:
+    # Handle timestamp conversion for Analytics
+    df['Timestamp'] = pd.to_datetime(df['Timestamp'])
+
+# ==========================================
+# 🌍 3. NAIROBI GEODATA
 # ==========================================
 NAIROBI_DATA = [
     {
@@ -44,16 +62,17 @@ NAIROBI_DATA = [
 sub_counties_list = [sc["subcounty_name"].title() for sc in NAIROBI_DATA[0]["sub_counties"]]
 
 # ==========================================
-# 🖥️ GLOBAL SETTINGS & DATA
+# 🏗️ 4. UI LAYOUT
 # ==========================================
-st.set_page_config(page_title="Sikika AI | Nairobi", layout="wide")
+st.title("🛣️ Sikika AI - Ministry of Roads")
 
-# Fetch and Prepare Data
-st.session_state.tickets = load_all_tickets()
-df = pd.DataFrame(st.session_state.tickets)
-
-if not df.empty:
-    df['Timestamp'] = pd.to_datetime(df['Timestamp'])
+tab_form, tab_track, tab_analytics, tab_admin, tab_dev = st.tabs([
+    "📝 Citizen Reporting Portal", 
+    "🔍 Track My Grievance", 
+    "📊 Strategic Analytics", 
+    "🔐 Admin Dashboard",
+    "💻 Developer Portal"
+])
 
 st.title("🛣️ Sikika AI - Ministry of Roads")
 # 1. UPDATED TABS: Added 'Track My Grievance'
